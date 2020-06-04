@@ -13,6 +13,7 @@ import com.github.insanusmokrassar.TelegramBotAPI.types.buttons.InlineKeyboardBu
 import com.github.insanusmokrassar.TelegramBotAPI.types.buttons.InlineKeyboardMarkup
 import com.github.insanusmokrassar.TelegramBotAPI.types.chat.ChatPermissions
 import com.github.insanusmokrassar.TelegramBotAPI.types.chat.abstracts.GroupChat
+import com.github.insanusmokrassar.TelegramBotAPI.types.diceResultLimit
 import com.github.insanusmokrassar.TelegramBotAPI.types.message.ChatEvents.NewChatMembers
 import com.github.insanusmokrassar.TelegramBotAPI.types.message.abstracts.ChatEventMessage
 import com.github.insanusmokrassar.TelegramBotAPI.types.message.abstracts.Message
@@ -62,26 +63,30 @@ class SendCaptchaHandler(
 
             telegramClient.restrictChatMember(chat.id, member.id)
 
+            val diceMessage = telegramClient.sendDiceTo(chat.id)
+            val diceResult = diceMessage.content.dice.value
+
             val keyboard = InlineKeyboardMarkup(
                 listOf(
-                    listOf(
+                    diceResultLimit.map {
                         CallbackDataInlineKeyboardButton(
-                            CAPTCHA_MESSAGES.random(), createCallbackDataForHandler(
+                            it.toString(), createCallbackDataForHandler(
                                 encodeCallbackData(member.id, permissions),
                                 CaptchaCallbackHandler::class.java
                             )
                         )
-                    )
+                    }
                 )
             )
 
             val kickTimeoutMinutes = botProperties.captchaKickTimeout.toMinutes()
 
-            val captchaMessage = telegramClient.sendTextTo(
-                chat.id, """
-                    Эй, ${member.usernameOrName}! Мы отобрали твою свободу слова, пока ты не тыкнешь сюда 👇
-                    У тебя есть $kickTimeoutMinutes ${kickTimeoutMinutes.getForm("минута", "минуты", "минут")}
-                    """.trimIndent(),
+            val captchaMessage = telegramClient.replyTextTo(
+                diceMessage,
+                """
+                Эй, ${member.usernameOrName}! Мы отобрали твою свободу слова, пока ты не укажешь правильно, сколько выпало на этом кубике.
+                У тебя есть $kickTimeoutMinutes ${kickTimeoutMinutes.getForm("минута", "минуты", "минут")}
+                """.trimIndent(),
                 keyboard = keyboard
             )
 
